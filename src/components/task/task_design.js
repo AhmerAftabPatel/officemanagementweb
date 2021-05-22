@@ -1,0 +1,368 @@
+import React from "react";
+import Select from "react-select";
+import { withRouter } from "react-router-dom";
+// import { constants } from "../../constants";
+import { imageUploadSizeFailueMsg } from "./Message/MessageData";
+import { Image, Form, Header } from "semantic-ui-react";
+import { SuccessMessageBox, FailureMessageBox } from "./Message/MessageBoxes";
+import Default from "../../assets/images/Default.png";
+
+class TaskCreateDesign extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      name: "",
+      description: "",
+      phase: "",
+      deadline: "",
+      userId: null,
+      cateId: null,
+      error: "",
+      bucket: "",
+      validCategories: [],
+      validUsers: [],
+      showSuccessBox: false,
+      successBoxData: {
+        header: null,
+        content: null
+      },
+      successBoxAttributes: {},
+      showFailureBox: false,
+      failureBoxData: {
+        header: null,
+        content: null
+      },
+      failureBoxAttributes: {}
+    };
+
+    this.handleSubmit = this.handleSubmit.bind(this);
+  }
+
+  handleSubmit(e) {
+    e.preventDefault();
+    // this.isValid();
+    if (this.isValid()) {
+      const task = {
+        name: this.state.name,
+        description: this.state.description,
+        phase: this.state.phase.label,
+        deadline: this.state.deadline,
+        userId: this.state.userId.value,
+        // assignedby: this.state.userId.value,
+        cateId: this.state.cateId.value,
+        bucket: this.state.bucket.value,
+        dummy: "design"
+      };
+      const token = localStorage.getItem("jwtToken");
+      this.props.createTask(task, token);
+      this.props.fetchTasks(token);
+      this.clearInput();
+      this.props.snack();
+    }
+  }
+  onFileChange = event => {
+    const file = event.target.files[0];
+    const fileSize = file.size;
+    if (fileSize > 1000000) {
+      this.setState({
+        showFailureBox: true,
+        failureBoxData: {
+          header: imageUploadSizeFailueMsg.header,
+          content: imageUploadSizeFailueMsg.content
+        }
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    this.setState({
+      imageFile: file
+    });
+    reader.onloadend = () => {
+      this.setState({
+        imgSrc: [reader.result]
+      });
+    };
+  };
+  clearInput() {
+    this.setState({
+      name: "",
+      description: "",
+      phase: "",
+      deadline: "",
+      userId: null,
+      cateId: null,
+      validcategories: [],
+      validUsers: []
+    });
+  }
+  isValid = () => {
+    const { description, deadline, userId, cateId } = this.state;
+    if (!description.length > 0) {
+      this.setState({
+        error: "description should not be empty "
+      });
+      return false;
+    } else if (deadline === "" || userId === null || cateId === null) {
+      this.setState({
+        error: "all fields are required"
+      });
+      return false;
+    }
+    return true;
+  };
+
+  update(field) {
+    return e =>
+      this.setState({
+        [field]: e.currentTarget.value
+      });
+  }
+
+  handleUserChange = user => {
+    this.setState({ userId: user });
+  };
+  handleBucketChange = bucket => {
+    this.setState({ bucket: bucket });
+  };
+  handlePhaseChange = phase => {
+    this.setState({ phase: phase });
+  };
+
+  handlecateChange = cate => {
+    this.setState({ cateId: cate });
+  };
+
+  updateDeadline(deadline) {
+    return e =>
+      this.setState({
+        deadline: e.currentTarget.value
+      });
+  }
+
+  componentDidMount() {
+    // const token = localStorage.getItem("jwtToken");
+    // fetch(`${constants}/api/v1/categories`, {
+    //   headers: {
+    //     Authorization: `Bearer ${token}`
+    //   }
+    // })
+    //   .then(response => response.json())
+
+    //   .then(data => this.setState({ validCategories: data }));
+  }
+
+  render() {
+    if (!this.props.users) return null;
+    let { users } = this.props;
+    const categories = this.props.validCategories;
+
+    const arr = Object.values(categories);
+    let userOptions = [];
+    users.forEach(user => {
+      if (user.category === "design") {
+        userOptions.push({
+          label: user.username,
+          value: user.id
+        });
+      }
+    });
+
+    let bucketOptions = [
+      { label: "concept", value: "concept" },
+      { label: "Mock-up", value: "Mock-up" },
+      { label: "service", value: "service" },
+      { label: "info-graphic-education", value: "inf-graph" }
+    ];
+      let phaseOptions = [
+      { label: "Research" },
+      { label: "Design" },
+      { label: "Coding" },
+      { label: "Testing" },
+      { label: "Deployment" },
+      { label: "Maintainance" }
+    ];
+
+    let cateOptions = [];
+    arr.forEach(cate => {
+      cateOptions.push({
+        label: cate.name,
+        value: cate._id
+      });
+    });
+
+    let imagepreview = null;
+    if (this.state.imgSrc) {
+      imagepreview = (
+        <Image src={this.state.imgSrc} size="small" centered rounded />
+      );
+    } else {
+      imagepreview = <Image src={Default} size="small" rounded centered />;
+    }
+
+    return (
+      <div className="task-modal-container">
+        <div className="label">
+          <p>
+            <span style={{ color: "red" }}>{this.state.error}</span>
+          </p>
+          <h1>
+            <Header textAlign="center" style={{ color: "blue" }}>
+              {" "}
+              Design Engine
+            </Header>
+            &nbsp;
+            {this.state.error}
+          </h1>
+        </div>
+        <form onSubmit={this.handleSubmit}>
+          <div className="row">
+            <div className="input-field col s6">
+              <i className="fas fa-user prefix"></i>
+              <Select
+                id="bucket"
+                value={this.state.bucket}
+                options={bucketOptions}
+                isSearchable="true"
+                placeholder="select bucket"
+                onChange={this.handleBucketChange}
+              />
+            </div>
+            <div className="input-field col s6">
+              <i className="fas fa-user prefix"></i>
+              <Select
+                  id="phase"
+                  value={this.state.phase}
+                  options={phaseOptions}
+                  isSearchable="true"
+                  placeholder="Which Phase?"
+                  onChange={this.handlePhaseChange}
+                />
+            </div>
+          </div>
+          <div className="row">
+            <div className="input-field col s12">
+              <i className="fas fa-tasks prefix"></i>
+              <input
+                autoComplete="off"
+                value={this.state.name}
+                id="name"
+                type="text"
+                className="validate"
+                placeholder="Task title"
+                onChange={this.update("name")}
+              />
+              <label htmlFor="name">Name of Task</label>
+            </div>
+          </div>
+          <div className="row">
+            <div className="input-field col s3">
+              {/* <i className="fas fa-comment prefix"></i> */}
+              <textarea
+                autoComplete="off"
+                value={this.state.description}
+                id="description"
+                type="textarea"
+                // maxLength="1000"
+                className="validate"
+                rows={5}
+                cols={5}
+                style={{ height: "100px" }}
+                placeholder="Task description"
+                onChange={this.update("description")}
+              />
+              <label htmlFor="description">Additional Info</label>
+            </div>
+          </div>
+
+          <div className="input-field col s6">
+            <div className="input-field col s12">{imagepreview}</div>
+            {this.state.showSuccessBox ? (
+              <SuccessMessageBox
+                {...this.state.successBoxData}
+                attributes={this.state.successBoxAttributes}
+                handleDismiss={() => this.setState({ showSuccessBox: false })}
+              />
+            ) : null}
+            {this.state.showFailureBox ? (
+              <FailureMessageBox
+                {...this.state.failureBoxData}
+                attributes={this.state.failureBoxAttributes}
+                handleDismiss={() => this.setState({ showFailureBox: false })}
+              />
+            ) : null}
+
+            <p>&nbsp;</p>
+            <Form.Input
+              type="file"
+              onChange={this.onFileChange}
+              // required
+              className="imagefile"
+            />
+          </div>
+
+          <div>
+            <div className="row">
+              {/* <div className="input-field col s6">
+                <i className="far fa-clock prefix"></i>
+                <input
+                  autoComplete="off"
+                  value={this.state.phase}
+                  id="phase"
+                  type="number"
+                  className="validate"
+                  placeholder="est Time"
+                  onChange={this.update("phase")}
+                />
+                <label htmlFor="phase">Estimated Time</label>
+              </div> */}
+              <div className="input-field col s6">
+                <i className="far fa-calendar-alt prefix"></i>
+                <input
+                  type="date"
+                  placeholder="deadline date"
+                  value={this.state.deadline}
+                  onChange={this.update("deadline")}
+                />
+              </div>
+            </div>
+
+            <div className="row">
+              <div className="input-field col s6">
+                <i className="far fa-folder-open prefix"></i>
+                <Select
+                  id="cateId"
+                  value={this.state.cateId}
+                  options={cateOptions}
+                  isSearchable="true"
+                  placeholder="Which product?"
+                  onChange={this.handlecateChange}
+                />
+              </div>
+              <div className="input-field col s6">
+                <i className="fas fa-user prefix"></i>
+                <Select
+                  id="userId"
+                  value={this.state.userId}
+                  options={userOptions}
+                  isSearchable="true"
+                  placeholder="Assign To?"
+                  onChange={this.handleUserChange}
+                />
+              </div>
+            </div>
+          </div>
+          <div id="close-button">
+            <button className="btn waves-effect waves-light" type="submit">
+              {" "}
+              Create Task{" "}
+            </button>
+          </div>
+        </form>
+      </div>
+    );
+  }
+}
+
+export default withRouter(TaskCreateDesign);
